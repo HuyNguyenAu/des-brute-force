@@ -1,13 +1,14 @@
 # PiCryptodome only works with bytes for key, plaintext, and ciphertext.
+# DOES NOT WORK ON LINUX. HAS VERY BAD MEMORY LEAKS, WHERE 8Gb RAM 
+# BECOMES FULL AFTER 30 MINS !!!
 from Crypto.Cipher import DES
-from Crypto.Random import get_random_bytes
 
 # Key Gen. Better than just using nested loops.
 # https://docs.python.org/2/library/itertools.html#itertools.product
 # I don't fully understand it.
 from itertools import product
-from gc import collect
 from binascii import b2a_uu
+from gc import collect
 
 # Regex
 from re import search
@@ -30,29 +31,22 @@ from re import search
 # Same as 0 to 256 ^ 8.
 
 if __name__ == "__main__":
-    with open("plaintext", "w") as file:
-        for keyGen in product(range(256), repeat=5):
-            try:
-                key = bytearray(
-                    (
-                        keyGen[0],
-                        keyGen[1],
-                        keyGen[2],
-                        keyGen[3],
-                        229,
-                        246,
-                        102,
-                        keyGen[4],
-                    )
-                )
-                cipher = DES.new(key, DES.MODE_ECB)
-                plaintext = cipher.decrypt(bytes.fromhex("ce126d2ddf2d1e64"))
-                match = search("[A-Z]{4} [A-Z]{4}", b2a_uu(plaintext).decode())
-                # print(f"{key.hex()} {b2a_uu(plaintext).decode()}")
+    for keyGen in product(range(256), repeat=5):
+        try:
+            key = bytearray(
+                (keyGen[0], keyGen[1], keyGen[2], keyGen[3], 229, 246, 102, keyGen[4])
+            )
+            cipher = DES.new(key, DES.MODE_ECB)
+            plaintext = cipher.decrypt(bytes.fromhex("ce126d2ddf2d1e64"))
+            match = search("[A-Z]{4} [A-Z]{4}", b2a_uu(plaintext).decode())
+            # DEBUG
+            # print(f"{key.hex()} {b2a_uu(plaintext).decode()}")
 
-                if match:
+            if match:
+                with open("plaintext", "w") as file:
                     file.write(str(key.hex()) + " " + str(match) + "\n")
-            except Exception:
-                pass
-            finally:
-                pass
+        except Exception:
+            pass
+        finally:        
+            # Memory not being released sometimes. 
+            collect()
